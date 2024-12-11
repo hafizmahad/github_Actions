@@ -3,20 +3,26 @@ name: CI Pipeline
 on:
   workflow_dispatch:
     inputs:
-      stage:
-        description: 'Select the stage to run'
-        required: true
-        default: 'test'
-        type: choice
-        options:
-          - test
-          - dev
-          - deploy
+      test:
+        description: 'Run tests'
+        required: false
+        type: boolean
+        default: false
+      dev:
+        description: 'Run dev environment'
+        required: false
+        type: boolean
+        default: false
+      deploy:
+        description: 'Run deploy'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'test' }}
+    if: ${{ github.event.inputs.test == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -34,7 +40,7 @@ jobs:
 
   dev:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'dev' }}
+    if: ${{ github.event.inputs.dev == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -52,7 +58,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'deploy' }}
+    if: ${{ github.event.inputs.deploy == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
