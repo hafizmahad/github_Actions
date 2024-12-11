@@ -20,8 +20,6 @@ jobs:
     steps:
       # Step 1: Debug the input
       - name: Debug Stage Input
-        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
-
       # Step 2: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -46,8 +44,6 @@ jobs:
     steps:
       # Step 1: Debug the input
       - name: Debug Stage Input
-        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
-
       # Step 2: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -72,7 +68,6 @@ jobs:
     steps:
       # Step 1: Debug the input
       - name: Debug Stage Input
-        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
 
       # Step 2: Check out the code
       - name: Checkout repository
