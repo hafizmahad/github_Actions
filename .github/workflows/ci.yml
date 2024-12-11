@@ -30,3 +30,17 @@ jobs:
       # Step 4: Run tests
       - name: Run tests
         run: npm test
+
+      # Step 5: Lint the code (optional)
+      - name: Run linter
+        run: npm run lint
+
+      # Step 6: Build the application (optional)
+      - name: Build app
+        run: npm run build
+
+      # Step 7: Deploy to staging (example step for deployment)
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging server..."
+          # Replace with actual deployment command, e.g., using AWS CLI, Docker, or other deployment tools
