@@ -20,36 +20,35 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'test' || github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.inputs.stage == 'test' }}  # Only run if stage is 'test'
 
     steps:
-      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Run tests
       - name: Run tests
         run: npm test
 
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'deploy' || github.event_name == 'push' || github.event_name == 'pull_request' }}
-    
+    if: ${{ github.event.inputs.stage == 'deploy' }}  # Only run if stage is 'deploy'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to staging server..."
-          # Replace with actual deployment commands, e.g., using AWS CLI, Docker, or other deployment tools
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Deploy application
+        run: echo "Deploying application..."  # Replace with your deploy steps
