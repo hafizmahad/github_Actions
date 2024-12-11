@@ -8,6 +8,11 @@ on:
         required: true
         default: 'test'
         type: choice
+        description: Make a choice
+        options:
+        - test
+        - dev
+        - deploy
 
 
 jobs:
