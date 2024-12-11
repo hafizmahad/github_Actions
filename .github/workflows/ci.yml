@@ -32,10 +32,6 @@ jobs:
         run: npm test
 
 
-      # Step 6: Build the application (optional)
-      - name: Build app
-        run: npm run build
-
       # Step 7: Deploy to staging (example step for deployment)
       - name: Deploy to staging
         run: |
