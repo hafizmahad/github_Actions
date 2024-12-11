@@ -15,7 +15,7 @@ on:
         default: 'test'
         options:
           - test
-          - build
+          - dev
           - deploy
 
 jobs:
@@ -41,9 +41,9 @@ jobs:
       - name: Run tests
         run: npm test
 
-  build:
+  dev:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'build' || github.event_name == 'push' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.inputs.stage == 'dev' }}
     steps:
       # Step 1: Check out the code
       - name: Checkout repository
@@ -59,9 +59,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Build the application
-      - name: Build application
-        run: npm run build  # Replace with your actual build command
+      # Step 4: Start the development environment
+      - name: Start development server
+        run: npm run dev  # Replace with your actual dev command, e.g., "npm run dev" or any other dev-related command
 
   deploy:
     runs-on: ubuntu-latest
