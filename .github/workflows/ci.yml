@@ -6,7 +6,6 @@ on:
       stage:
         description: 'Select the stage to run'
         required: true
-        default: 'test'
         options:
           - test
           - dev
