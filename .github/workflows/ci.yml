@@ -4,33 +4,38 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: 'Specify the stage to run (test, dev, deploy)'
+        description: 'Select the stage to run'
         required: true
         default: 'test'
         type: choice
-        description: Make a choice
         options:
         - test
         - dev
         - deploy
-
 
 jobs:
   test:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'test' }}
     steps:
+      # Step 1: Debug the input
+      - name: Debug Stage Input
+
+      # Step 2: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 3: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # Step 5: Run tests
       - name: Run tests
         run: npm test
 
@@ -38,17 +43,25 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'dev' }}
     steps:
+      # Step 1: Debug the input
+      - name: Debug Stage Input
+        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
+
+      # Step 2: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 3: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # Step 5: Start the development environment
       - name: Start development server
         run: npm run dev  # Replace with your actual dev command
 
@@ -56,18 +69,27 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'deploy' }}
     steps:
+      # Step 1: Debug the input
+      - name: Debug Stage Input
+        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
+
+      # Step 2: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 3: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # Step 5: Deploy the application
       - name: Deploy application
         run: |
           echo "Deploying application..."
           # Replace with your actual deployment commands
+          # For example, you might use AWS CLI, Docker, or other tools.
