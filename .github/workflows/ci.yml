@@ -15,40 +15,64 @@ on:
         default: 'test'
         options:
           - test
+          - build
           - deploy
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'test' }}  # Only run if stage is 'test'
-
+    if: ${{ github.event.inputs.stage == 'test' || github.event_name == 'push' || github.event_name == 'pull_request' }}
     steps:
+      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
+      # Step 4: Run tests
       - name: Run tests
         run: npm test
 
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.stage == 'deploy' }}  # Only run if stage is 'deploy'
-
+    if: ${{ github.event.inputs.stage == 'build' || github.event_name == 'push' || github.event_name == 'pull_request' }}
     steps:
+      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      - name: Deploy application
-        run: echo "Deploying application..."  # Replace with your deploy steps
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Build the application
+      - name: Build application
+        run: npm run build  # Replace with your actual build command
+
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.stage == 'deploy' }}
+    steps:
+      # Step 1: Check out the code
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Deploy to staging (replace with actual deploy commands)
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging server..."
+          # Add your actual deployment commands here (e.g., using AWS CLI, Docker, etc.)
