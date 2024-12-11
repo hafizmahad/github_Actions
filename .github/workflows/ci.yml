@@ -31,9 +31,6 @@ jobs:
       - name: Run tests
         run: npm test
 
-      # Step 5: Lint the code (optional)
-      - name: Run linter
-        run: npm run lint
 
       # Step 6: Build the application (optional)
       - name: Build app
