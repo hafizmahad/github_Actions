@@ -18,21 +18,17 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'test' }}
     steps:
-      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Run tests
       - name: Run tests
         run: npm test
 
@@ -40,21 +36,17 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'dev' }}
     steps:
-      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Start the development environment
       - name: Start development server
         run: npm run dev  # Replace with your actual dev command
 
@@ -62,23 +54,18 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'deploy' }}
     steps:
-      # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      # Step 3: Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Deploy the application
       - name: Deploy application
         run: |
           echo "Deploying application..."
-          # Replace with your actual deployment commands
-          # For example, you might use AWS CLI, Docker, or other tools
+          # Replace with your actual deployment commands (e.g., AWS CLI, Docker, etc.)
