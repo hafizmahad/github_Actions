@@ -66,13 +66,21 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.stage == 'deploy' }}
-    steps:
+     steps:
       # Step 1: Check out the code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Step 2: Deploy to staging (replace with actual deploy commands)
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to staging server..."
-          # Add your actual deployment commands here (e.g., using AWS CLI, Docker, etc.)
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run tests
+      - name: Run tests
+        run: npm test
