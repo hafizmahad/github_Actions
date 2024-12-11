@@ -9,9 +9,9 @@ on:
         default: 'test'
         type: choice
         options:
-        - test
-        - dev
-        - deploy
+          - test
+          - dev
+          - deploy
 
 jobs:
   test:
@@ -20,6 +20,7 @@ jobs:
     steps:
       # Step 1: Debug the input
       - name: Debug Stage Input
+        run: echo "Stage selected: ${{ github.event.inputs.stage }}"
 
       # Step 2: Check out the code
       - name: Checkout repository
@@ -92,4 +93,4 @@ jobs:
         run: |
           echo "Deploying application..."
           # Replace with your actual deployment commands
-          # For example, you might use AWS CLI, Docker, or other tools.
+          # For example, you might use AWS CLI, Docker, or other tools
