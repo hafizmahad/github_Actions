@@ -3,7 +3,8 @@ name: Deploy Nginx to EC2
 on:
   push:
     branches:
-      - main  # Trigger workflow on push to the main branch
+      - main
+      - stage # Trigger workflow on push to the main branch
 
 jobs:
   deploy:
