@@ -58,15 +58,24 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-    - name: Change Default Nginx Page
+    - name: Change Default Nginx Page Inside Container
       run: |
         ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          # Change default Nginx page
-          echo "<html><h1>Welcome to My Custom Nginx Page</h1></html>" | sudo tee /usr/share/nginx/html/index.html
+          # Get the container ID dynamically based on the container name
+          CONTAINER_ID=$(sudo docker ps -q -f "name=nginx-container")
+
+          # Check if the container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "Nginx container is not running. Exiting."
+            exit 1
+          fi
+
+          # Exec into the running Nginx container and change the default index.html
+          sudo docker exec -i $CONTAINER_ID bash -c 'echo "<html><h1>Welcome to My Custom Nginx Page</h1></html>" > /usr/share/nginx/html/index.html'
 
           # Restart Nginx container to apply changes
-          sudo docker restart nginx-container
+          sudo docker restart $CONTAINER_ID
 
-          # Verify that the page is updated
+          # Verify that the page is updated by calling localhost from inside the container
           curl localhost
         EOF
