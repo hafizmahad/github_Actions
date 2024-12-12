@@ -1,77 +1,67 @@
-name: CI Pipeline
+name: Deploy Nginx to EC2
 
 on:
   workflow_dispatch:
     inputs:
-      test:
-        description: 'Run tests'
+      start_container:
+        description: "Start a new Nginx container"
         required: false
         type: boolean
         default: false
-      dev:
-        description: 'Run dev environment'
+      change_webserver:
+        description: "Change default HTML in the Nginx container"
         required: false
         type: boolean
         default: false
-      deploy:
-        description: 'Run deploy'
+      modify_existing_container:
+        description: "Modify an existing Nginx container's HTML"
         required: false
         type: boolean
         default: false
 
 jobs:
-  test:
+  deploy-to-ec2:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.test == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Set up SSH to EC2
+        uses: appleboy/ssh-action@v0.1.9
         with:
-          node-version: '16'
+          host: ${{ secrets.EC2_IP }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          port: 22
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run tests
-        run: npm test
-
-  dev:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.dev == 'true' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Start development server
-        run: npm run dev  # Replace with your actual dev command
-
-  deploy:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.deploy == 'true' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Deploy application
+      - name: Start Nginx container on EC2
+        if: ${{ github.event.inputs.start_container == true }}
         run: |
-          echo "Deploying application..."
-          # Replace with your actual deployment commands (e.g., AWS CLI, Docker, etc.)
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "
+            docker pull nginx:latest && \
+            docker run -d --name nginx-container -p 8080:80 nginx:latest && \
+            echo 'Nginx container is running on port 8080.'"
+        
+      - name: Change the default HTML in Nginx container
+        if: ${{ github.event.inputs.change_webserver == true }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "
+            container_id=\$(docker ps -qf 'name=nginx-container') && \
+            if [ -n \"\$container_id\" ]; then \
+              docker exec \$container_id bash -c 'echo \"Welcome to Changed Nginx\" > /usr/share/nginx/html/index.html' && \
+              echo 'HTML updated in the Nginx container.'; \
+            else \
+              echo 'Nginx container not running. Exiting...'; exit 1; \
+            fi"
+      
+      - name: Modify the existing Nginx container's HTML
+        if: ${{ github.event.inputs.modify_existing_container == true }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "
+            container_id=\$(docker ps -qf 'name=nginx-container') && \
+            if [ -n \"\$container_id\" ]; then \
+              docker exec \$container_id bash -c 'echo \"This is Changed\" > /usr/share/nginx/html/index.html' && \
+              echo 'HTML in the existing Nginx container updated.'; \
+            else \
+              echo 'Nginx container not running. Exiting...'; exit 1; \
+            fi"
