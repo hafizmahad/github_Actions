@@ -25,7 +25,7 @@ jobs:
         echo "Deploying to EC2 at ${{ secrets.EC2_HOST }}"
 
         # Connect to EC2 and run commands to deploy Nginx
-        ssh -o StrictHostKeyChecking=no -T ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           # Pull the latest Nginx image from Docker Hub
           sudo docker pull nginx:latest
 
