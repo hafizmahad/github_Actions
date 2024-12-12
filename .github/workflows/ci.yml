@@ -3,20 +3,21 @@ name: Deploy and Manage Nginx on EC2
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: 'Choose action to perform'
+      deploy_nginx:
+        description: 'Deploy Nginx to EC2'
         required: true
-        default: 'deploy_nginx'
-        type: choice
-        options:
-          - deploy_nginx
-          - change_default_page
-          - deploy_and_change
+        default: false
+        type: boolean
+      change_default_page:
+        description: 'Change default Nginx page'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
   deploy_nginx:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.action == 'deploy_nginx' || github.event.inputs.action == 'deploy_and_change' }}
+    if: ${{ github.event.inputs.deploy_nginx == 'true' }}
 
     steps:
     - name: Checkout Code
@@ -46,7 +47,7 @@ jobs:
 
   change_default_page:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.action == 'change_default_page' || github.event.inputs.action == 'deploy_and_change' }}
+    if: ${{ github.event.inputs.change_default_page == 'true' }}
 
     steps:
     - name: Checkout Code
