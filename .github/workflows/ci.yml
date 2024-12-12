@@ -1,95 +1,82 @@
-name: Remote Server Deployment
+name: Deploy Workflow
 
 on:
-  workflow_dispatch: # Allows manual triggering of the workflow
+  workflow_dispatch:
     inputs:
       pull_branch:
-        description: "Pull branch on the remote server"
-        required: false
-        default: "false"
+        description: "Pull the branch from the repository"
+        required: true
+        default: false
       assets_install:
-        description: "Install assets on the remote server"
-        required: false
-        default: "false"
+        description: "Install assets"
+        required: true
+        default: false
       database_update:
-        description: "Update database on the remote server"
-        required: false
-        default: "false"
+        description: "Update the database schema"
+        required: true
+        default: false
       clear_query_result:
-        description: "Clear query results on the remote server"
-        required: false
-        default: "false"
+        description: "Clear query and result caches"
+        required: true
+        default: false
       cache_clear:
-        description: "Clear cache on the remote server"
-        required: false
-        default: "false"
+        description: "Clear the application cache"
+        required: true
+        default: false
       execute_extra_commands:
-        description: "Execute extra commands on the remote server"
-        required: false
-        default: "false"
+        description: "Execute additional custom commands"
+        required: true
+        default: false
       extra_commands:
-        description: "Extra commands to execute"
+        description: "Commands to execute when 'Execute Extra Commands' is enabled"
         required: false
         default: ""
 
 env:
   host_root: "/root/qa"
   container_root: "/app"
-  server_ip: "${{ secrets.REMOTE_SERVER_IP }}"
+  server_ip: ${{ secrets.MARSTRANSLATION_QA_IP }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: Set up SSH
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
-    - name: Set up SSH agent
-      uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Pull Branch
+        if: ${{ inputs.pull_branch == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "git -C ${{ env.host_root }} pull origin qa"
 
-    - name: Pull Branch
-      if: ${{ inputs.pull_branch == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "git -C $host_root pull origin qa"
+      - name: Install Assets
+        if: ${{ inputs.assets_install == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console fos:js-routing:dump --format=json --target=public/assets/js/fos_js_routes.json -e prod"
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app yarn --cwd ${{ env.container_root }} encore production"
 
-    - name: Install Assets
-      if: ${{ inputs.assets_install == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console fos:js-routing:dump --format=json --target=public/assets/js/fos_js_routes.json -e prod"
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app yarn --cwd $container_root encore production"
+      - name: Update Database
+        if: ${{ inputs.database_update == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-metadata"
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:schema:update --force"
 
-    - name: Update Database
-      if: ${{ inputs.database_update == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-metadata"
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console doctrine:schema:update --force"
+      - name: Clear Query and Result Cache
+        if: ${{ inputs.clear_query_result == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-query"
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-result"
 
-    - name: Clear Query Results
-      if: ${{ inputs.clear_query_result == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-query"
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-result"
+      - name: Clear Cache
+        if: ${{ inputs.cache_clear == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console ca:cl -e prod"
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app bash docker-entrypoint.sh"
 
-    - name: Clear Cache
-      if: ${{ inputs.cache_clear == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console ca:cl -e prod"
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app bash docker-entrypoint.sh"
-
-    - name: Execute Extra Commands
-      if: ${{ inputs.execute_extra_commands == 'true' }}
-      run: |
-        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
-          "docker exec -w $container_root mt_app php bin/console '${{ inputs.extra_commands }}'"
+      - name: Execute Extra Commands
+        if: ${{ inputs.execute_extra_commands == 'true' }}
+        run: |
+          ssh root@${{ env.server_ip }} "docker exec -w ${{ env.container_root }} mt_app php bin/console ${{ inputs.extra_commands }}"
