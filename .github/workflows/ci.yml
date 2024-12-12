@@ -22,6 +22,7 @@ on:
 jobs:
   deploy-to-ec2:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -41,7 +42,7 @@ jobs:
             docker pull nginx:latest && \
             docker run -d --name nginx-container -p 8080:80 nginx:latest && \
             echo 'Nginx container is running on port 8080.'"
-        
+
       - name: Change the default HTML in Nginx container
         if: ${{ github.event.inputs.change_webserver == true }}
         run: |
@@ -65,3 +66,9 @@ jobs:
             else \
               echo 'Nginx container not running. Exiting...'; exit 1; \
             fi"
+
+      - name: Confirm container status
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "
+            docker ps -a && \
+            echo 'Listing all containers to confirm the status of Nginx container.'"
