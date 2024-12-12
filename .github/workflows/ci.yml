@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - stage # Trigger workflow on push to the main branch
+      - stage  # Trigger workflow on push to the main or stage branch
 
 jobs:
   deploy:
@@ -18,3 +18,21 @@ jobs:
       uses: webfactory/ssh-agent@v0.5.4
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # Add your private SSH key to GitHub secrets
+
+    - name: Deploy Nginx to EC2
+      run: |
+        # Connect to EC2 and pull Nginx Docker image
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+          # Pull the latest Nginx image from Docker Hub
+          sudo docker pull nginx:latest
+
+          # Stop and remove any running containers (optional, if you want to ensure a fresh start)
+          sudo docker stop nginx-container || true
+          sudo docker rm nginx-container || true
+
+          # Run the Nginx container
+          sudo docker run -d --name nginx-container -p 80:80 nginx:latest
+
+          # Verify that the container is running
+          sudo docker ps
+        EOF
