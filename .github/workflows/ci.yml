@@ -1,97 +1,43 @@
-name: Deploy Workflow
+name: Deploy Nginx to EC2
 
 on:
-  workflow_dispatch:
-    inputs:
-      pull_branch:
-        description: 'Pull the latest branch'
-        required: false
-        type: boolean
-        default: false
-      assets_install:
-        description: 'Install assets'
-        required: false
-        type: boolean
-        default: false
-      database_update:
-        description: 'Update the database schema'
-        required: false
-        type: boolean
-        default: false
-      clear_query_result:
-        description: 'Clear query and result cache'
-        required: false
-        type: boolean
-        default: false
-      cache_clear:
-        description: 'Clear application cache'
-        required: false
-        type: boolean
-        default: false
-      execute_extra_commands:
-        description: 'Execute extra commands'
-        required: false
-        type: boolean
-        default: false
-      extra_commands:
-        description: 'Extra commands to execute (used if execute_extra_commands is true)'
-        required: false
-        default: ''
-
-env:
-  host_root: "/root/qa"
-  container_root: "/app"
-  server_ip: ${{ secrets.MARSTRANSLATION_QA_IP }}
+  push:
+    branches:
+      - main  # Trigger workflow on push to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Set up SSH
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Pull Branch
-        if: inputs.pull_branch == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "git -C ${{ env.host_root }} pull origin qa"
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # Add your private SSH key to GitHub secrets
 
-      - name: Install Assets
-        if: inputs.assets_install == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "
-            docker exec -w ${{ env.container_root }} mt_app php bin/console fos:js-routing:dump --format=json --target=public/assets/js/fos_js_routes.json -e prod &&
-            docker exec -w ${{ env.container_root }} mt_app yarn --cwd ${{ env.container_root }} encore production
-          "
+    - name: Deploy Nginx to EC2
+      env:
+        EC2_HOST: ${{ secrets.EC2_HOST }}  # The public IP or DNS of your EC2 instance
+        EC2_USER: ${{ secrets.EC2_USER }}  # The user to SSH as (e.g., ubuntu for Ubuntu AMIs)
+      run: |
+        # Transfer the Docker Compose file to the EC2 instance
+        echo "Creating a Docker Compose file for Nginx..."
+        echo "version: '3.8'
+        services:
+          nginx:
+            image: nginx:latest
+            ports:
+              - 80:80" > docker-compose.yml
 
-      - name: Update Database
-        if: inputs.database_update == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "
-            docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-metadata &&
-            docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:schema:update --force
-          "
+        echo "Copying the Docker Compose file to the EC2 instance..."
+        scp -o StrictHostKeyChecking=no docker-compose.yml $EC2_USER@$EC2_HOST:~/
 
-      - name: Clear Query and Result Cache
-        if: inputs.clear_query_result == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "
-            docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-query &&
-            docker exec -w ${{ env.container_root }} mt_app php bin/console doctrine:cache:clear-result
-          "
-
-      - name: Clear Cache
-        if: inputs.cache_clear == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "
-            docker exec -w ${{ env.container_root }} mt_app php bin/console ca:cl -e prod &&
-            docker exec -w ${{ env.container_root }} mt_app bash docker-entrypoint.sh
-          "
-
-      - name: Execute Extra Commands
-        if: inputs.execute_extra_commands == 'true'
-        run: |
-          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@${{ env.server_ip }} "
-            docker exec -w ${{ env.container_root }} mt_app php bin/console '${{ inputs.extra_commands }}'
-          "
+        # Connect to EC2 and deploy the container
+        echo "Connecting to EC2 and starting the Nginx container..."
+        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+        docker compose down || true  # Stop any existing container
+        docker compose up -d         # Start the Nginx container
+        EOF
