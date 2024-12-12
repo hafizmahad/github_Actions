@@ -1,3 +1,14 @@
+name: SSH into EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_ssh:
+        description: 'SSH into EC2 instance'
+        required: true
+        type: boolean
+        default: false
+
 jobs:
   ssh-into-ec2:
     runs-on: ubuntu-latest
@@ -5,7 +16,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # SSH into EC2 only if user selects 'start_ssh'
       - name: Set up SSH to EC2
+        if: ${{ github.event.inputs.start_ssh == 'true' }}
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.EC2_IP }}
@@ -13,6 +26,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
           port: 22
 
-      - name: Run commands on EC2
+      - name: SSH Command to EC2 (for verification)
+        if: ${{ github.event.inputs.start_ssh == 'true' }}
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "echo 'Successfully SSH'd into EC2!'"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "echo 'SSH connection successful to EC2 instance!'"
