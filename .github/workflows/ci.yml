@@ -1,32 +1,95 @@
-name: SSH into EC2
+name: Remote Server Deployment
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering of the workflow
     inputs:
-      start_ssh:
-        description: 'SSH into EC2 instance'
-        required: true
-        type: boolean
-        default: false
+      pull_branch:
+        description: "Pull branch on the remote server"
+        required: false
+        default: "false"
+      assets_install:
+        description: "Install assets on the remote server"
+        required: false
+        default: "false"
+      database_update:
+        description: "Update database on the remote server"
+        required: false
+        default: "false"
+      clear_query_result:
+        description: "Clear query results on the remote server"
+        required: false
+        default: "false"
+      cache_clear:
+        description: "Clear cache on the remote server"
+        required: false
+        default: "false"
+      execute_extra_commands:
+        description: "Execute extra commands on the remote server"
+        required: false
+        default: "false"
+      extra_commands:
+        description: "Extra commands to execute"
+        required: false
+        default: ""
+
+env:
+  host_root: "/root/qa"
+  container_root: "/app"
+  server_ip: "${{ secrets.REMOTE_SERVER_IP }}"
 
 jobs:
-  ssh-into-ec2:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      # SSH into EC2 only if user selects 'start_ssh'
-      - name: Set up SSH to EC2
-        if: ${{ github.event.inputs.start_ssh == 'true' }}
-        uses: appleboy/ssh-action@v0.1.9
-        with:
-          host: ${{ secrets.EC2_IP }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          port: 22
+    - name: Set up SSH agent
+      uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: SSH Command to EC2 (for verification)
-        if: ${{ github.event.inputs.start_ssh == 'true' }}
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_IP }} "echo 'SSH connection successful to EC2 instance!'"
+    - name: Pull Branch
+      if: ${{ inputs.pull_branch == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "git -C $host_root pull origin qa"
+
+    - name: Install Assets
+      if: ${{ inputs.assets_install == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console fos:js-routing:dump --format=json --target=public/assets/js/fos_js_routes.json -e prod"
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app yarn --cwd $container_root encore production"
+
+    - name: Update Database
+      if: ${{ inputs.database_update == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-metadata"
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console doctrine:schema:update --force"
+
+    - name: Clear Query Results
+      if: ${{ inputs.clear_query_result == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-query"
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console doctrine:cache:clear-result"
+
+    - name: Clear Cache
+      if: ${{ inputs.cache_clear == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console ca:cl -e prod"
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app bash docker-entrypoint.sh"
+
+    - name: Execute Extra Commands
+      if: ${{ inputs.execute_extra_commands == 'true' }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.server_ip }} \
+          "docker exec -w $container_root mt_app php bin/console '${{ inputs.extra_commands }}'"
