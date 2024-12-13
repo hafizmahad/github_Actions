@@ -1,4 +1,4 @@
-name: Deploy and Manage mt_app on EC2
+name: Manage mt_app on EC2
 
 on:
   workflow_dispatch:
@@ -8,9 +8,18 @@ on:
         required: true
         default: false
         type: boolean
+      clear_cache:
+        description: 'Clear the cache of the running mt_app container'
+        required: true
+        default: false
+        type: boolean
+      custom_command:
+        description: 'Command to execute inside mt_app container'
+        required: false
+        type: string
 
 jobs:
-  deploy_mt_app:
+  execute_in_mt_app_container:
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.deploy_mt_app == 'true' }}
 
@@ -23,18 +32,56 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-    - name: Execute commands inside running mt_app container
+    - name: Execute user-provided command inside mt_app container
       run: |
         ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          # Execute commands inside the running mt_app container
+          # Get the container ID dynamically based on the container name
           CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
 
+          # Check if the mt_app container is running
           if [ -z "$CONTAINER_ID" ]; then
             echo "mt_app container is not running. Exiting."
             exit 1
           fi
 
-          # Execute any desired command inside the running container
-          sudo docker exec -i $CONTAINER_ID bash -c 'echo "Custom command executed inside mt_app container"'
+          # Execute the user-provided custom command inside the container
+          if [ -z "${{ github.event.inputs.custom_command }}" ]; then
+            echo "No command provided. Exiting."
+            exit 1
+          else
+            echo "Executing custom command inside mt_app container: ${{ github.event.inputs.custom_command }}"
+            sudo docker exec -i $CONTAINER_ID bash -c "${{ github.event.inputs.custom_command }}"
+          fi
+        EOF
+
+  clear_cache:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.clear_cache == 'true' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Clear Cache in mt_app Container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Clear cache inside the container (modify this based on your app's cache location)
+          sudo docker exec -i $CONTAINER_ID bash -c 'rm -rf /path/to/cache/*'
+
+          echo "Cache cleared inside mt_app container."
 
         EOF
