@@ -1,27 +1,38 @@
-name: Qa_Mt_Pipeline
+name: Qa_mt_Pipeline
 
 on:
   workflow_dispatch:
     inputs:
-      deploy_mt_app:
-        description: 'Execute commands inside running mt_app container'
+      pull_branch:
+        description: 'Pull the latest branch of the application'
         required: true
         default: false
         type: boolean
-      clear_cache:
-        description: 'Clear the cache of the running mt_app container'
+      assets_install:
+        description: 'Install application assets'
         required: true
         default: false
         type: boolean
-      custom_command:
-        description: 'Command to execute inside mt_app container'
-        required: false
-        type: string
+      database_update:
+        description: 'Run database migrations or updates'
+        required: true
+        default: false
+        type: boolean
+      clear_query_result:
+        description: 'Clear the query result cache'
+        required: true
+        default: false
+        type: boolean
+      cache_clear:
+        description: 'Clear the application cache'
+        required: true
+        default: false
+        type: boolean
 
 jobs:
-  execute_in_mt_app_container:
+  pull_branch_job:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.deploy_mt_app == 'true' }}
+    if: ${{ github.event.inputs.pull_branch == 'true' }}
 
     steps:
     - name: Checkout Code
@@ -32,42 +43,7 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-    - name: Execute user-provided command inside mt_app container
-      run: |
-        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Execute the user-provided custom command inside the container
-          if [ -z "${{ github.event.inputs.custom_command }}" ]; then
-            echo "No command provided. Exiting."
-            exit 1
-          else
-            echo "Executing custom command inside mt_app container: ${{ github.event.inputs.custom_command }}"
-            sudo docker exec -i $CONTAINER_ID bash -c "${{ github.event.inputs.custom_command }}"
-          fi
-        EOF
-
-  clear_cache:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.clear_cache == 'true' }}
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.4
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-    - name: Clear Cache in mt_app Container
+    - name: Pull latest branch in mt_app container
       run: |
         ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
           # Get the container ID dynamically based on the container name (mt_app)
@@ -79,9 +55,127 @@ jobs:
             exit 1
           fi
 
-          # Clear cache inside the container (modify this based on your app's cache location)
-          sudo docker exec -i $CONTAINER_ID bash -c 'rm -rf /path/to/cache/*'
+          # Pull the latest branch or perform a Git pull inside the container
+          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && git pull origin main'
 
-          echo "Cache cleared inside mt_app container."
+        EOF
+
+  assets_install_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.assets_install == 'true' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Install assets inside mt_app container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Run your asset installation command inside the container
+          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && npm install && npm run build'
+
+        EOF
+
+  database_update_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.database_update == 'true' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Update database inside mt_app container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Run database migrations or updates inside the container
+          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan migrate'
+
+        EOF
+
+  clear_query_result_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.clear_query_result == 'true' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Clear query results cache inside mt_app container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Clear query result cache inside the container
+          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan cache:clear'
+
+        EOF
+
+  cache_clear_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.cache_clear == 'true' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Clear application cache inside mt_app container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Clear the application cache inside the container (specific to your app)
+          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan cache:clear'
 
         EOF
