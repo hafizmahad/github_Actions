@@ -1,23 +1,18 @@
-name: Deploy and Manage Nginx on EC2
+name: Deploy and Manage mt_app on EC2
 
 on:
   workflow_dispatch:
     inputs:
-      deploy_nginx:
-        description: 'Deploy Nginx to EC2'
-        required: true
-        default: false
-        type: boolean
-      change_default_page:
-        description: 'Change default Nginx page'
+      deploy_mt_app:
+        description: 'Execute commands inside running mt_app container'
         required: true
         default: false
         type: boolean
 
 jobs:
-  deploy_nginx:
+  deploy_mt_app:
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.deploy_nginx == 'true' }}
+    if: ${{ github.event.inputs.deploy_mt_app == 'true' }}
 
     steps:
     - name: Checkout Code
@@ -28,57 +23,18 @@ jobs:
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-    - name: Deploy Nginx to EC2
+    - name: Execute commands inside running mt_app container
       run: |
         ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          # Pull the latest Nginx image from Docker Hub
-          sudo docker pull nginx:latest
+          # Execute commands inside the running mt_app container
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
 
-          # Stop and remove any existing container
-          sudo docker stop nginx-container || true
-          sudo docker rm nginx-container || true
-
-          # Run the Nginx container
-          sudo docker run -d --name nginx-container -p 80:80 nginx:latest
-
-          # Verify that the container is running
-          sudo docker ps
-        EOF
-
-  change_default_page:
-    runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.change_default_page == 'true' }}
-
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-
-    - name: Set up SSH
-      uses: webfactory/ssh-agent@v0.5.4
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-    - name: Change Default Nginx Page Inside Container
-      run: |
-        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name
-          CONTAINER_ID=$(sudo docker ps -q -f "name=nginx-container")
-
-          # Check if the container is running
           if [ -z "$CONTAINER_ID" ]; then
-            echo "Nginx container is not running. Exiting."
+            echo "mt_app container is not running. Exiting."
             exit 1
           fi
 
-          # Ensure the /usr/share/nginx/html directory exists and has the right permissions
-          sudo docker exec -i $CONTAINER_ID bash -c 'mkdir -p /usr/share/nginx/html && chown -R nginx:nginx /usr/share/nginx/html'
+          # Execute any desired command inside the running container
+          sudo docker exec -i $CONTAINER_ID bash -c 'echo "Custom command executed inside mt_app container"'
 
-          # Exec into the running Nginx container and change the default index.html
-          sudo docker exec -i $CONTAINER_ID bash -c 'echo "<html><h1>Welcome to My Custom Nginx Page</h1></html>" > /usr/share/nginx/html/index.html'
-
-          # Restart Nginx container to apply changes
-          sudo docker restart $CONTAINER_ID
-
-          # Verify that the page is updated by calling localhost from inside the container
-          curl localhost
         EOF
