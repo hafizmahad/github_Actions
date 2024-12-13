@@ -1,4 +1,4 @@
-name: Qa_mt_Pipeline
+name: Manage mt_app on EC2
 
 on:
   workflow_dispatch:
@@ -28,6 +28,10 @@ on:
         required: true
         default: false
         type: boolean
+      custom_command:
+        description: 'Custom command to execute inside mt_app container'
+        required: false
+        type: string
 
 jobs:
   pull_branch_job:
@@ -178,4 +182,34 @@ jobs:
           # Clear the application cache inside the container (specific to your app)
           sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan cache:clear'
 
+        EOF
+
+  custom_command_job:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.custom_command != '' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+    - name: Execute custom command inside mt_app container
+      run: |
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Get the container ID dynamically based on the container name (mt_app)
+          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
+
+          # Check if the mt_app container is running
+          if [ -z "$CONTAINER_ID" ]; then
+            echo "mt_app container is not running. Exiting."
+            exit 1
+          fi
+
+          # Execute the user-provided custom command inside the container
+          echo "Executing custom command inside mt_app container: ${{ github.event.inputs.custom_command }}"
+          sudo docker exec -i $CONTAINER_ID bash -c "${{ github.event.inputs.custom_command }}"
         EOF
