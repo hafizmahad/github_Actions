@@ -17,7 +17,7 @@ on:
         description: 'Extra commands to execute inside the container (e.g. php artisan migrate)'
         required: false
         default: ''
-        type: string  # Text input for extra commands to run inside the container
+        type: string  # String input for extra commands to run inside the container
 
 jobs:
   ci_cd_pipeline:
