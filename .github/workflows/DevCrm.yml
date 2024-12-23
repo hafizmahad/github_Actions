@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch:
+    inputs:
+      pull_branch:
+        description: 'Pull the branch from Git'
+        required: true
+        default: 'false'
+      docker_build:
+        description: 'Run Docker build and up'
+        required: true
+        default: 'false'
+      execute_extra_commands:
+        description: 'Execute extra commands inside the container'
+        required: true
+        default: 'false'
+      extra_commands:
+        description: 'Extra commands to execute'
+        required: false
+        default: ''
+
+jobs:
+  ci_cd_pipeline:
+    runs-on: ubuntu-latest
+    env:
+      server_user: 'root'
+      server_ip: ${{ secrets.SERVER_IP }}
+      app_root: '/root/app/vtigerdev'
+      extra_commands: ''
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Pull Branch
+        if: ${{ github.event.inputs.pull_branch == 'true' }}
+        run: |
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
+
+      - name: Docker Build
+        if: ${{ github.event.inputs.docker_build == 'true' }}
+        run: |
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f ${app_root}/docker-compose.yml up -d --build"
+
+      - name: Execute Extra Commands
+        if: ${{ github.event.inputs.execute_extra_commands == 'true' }}
+        run: |
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "docker exec -i crm_marshub_prod php ${extra_commands}"
