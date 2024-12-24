@@ -1,4 +1,4 @@
-name: SSH into Jump Box and Target Server
+name: SSH into Servers
 
 on:
   push:
@@ -6,21 +6,25 @@ on:
       - main
 
 jobs:
-  deploy:
+  ssh-into-servers:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Set up SSH agent and add key
-      uses: webfactory/ssh-agent@v0.5.4
-      with:
-        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-    - name: SSH to Jump Box and Target Server
-      run: |
-        # SSH into the jump box and then to the private server (no user specified)
-        ssh -o StrictHostKeyChecking=no jumpbox "
-          ssh -o StrictHostKeyChecking=no ${{ secrets.TARGET_SERVER_HOST }} 'echo \"Successfully connected to the private server!\"'
-        "
+      # SSH into the first server and then into the second server
+      - name: SSH into the first server and connect to the second
+        run: |
+          # SSH into the first server
+          ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOF'
+            # Echo success message after connecting to the first server
+            echo "Successfully connected to the first server (65.108.2.208)!"
+            
+            # SSH into the second server from the first one
+            ssh -o StrictHostKeyChecking=no root@192.168.37.78 << 'INNER_EOF'
+              # Echo success message after connecting to the second server
+              echo "Successfully connected to the second server (192.168.37.64)!"
+            INNER_EOF
+          EOF
