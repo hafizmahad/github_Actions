@@ -1,18 +1,29 @@
-name: SSH into PROXY_Serverss
+name: SSH into Public Server
 
 on:
   push:
     branches:
-      - main
+      - main  # Or any branch that you want to trigger on
 
 jobs:
-  ssh-into-servers:
+  ssh-into-server:
     runs-on: ubuntu-latest
 
     steps:
-      # SSH into the first server and then into the second server
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Set up SSH agent with the private key
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      # SSH into the remote server
       - name: SSH into the server
         run: |
+          # SSH into the public server
           ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOF'
             echo "Successfully connected to the public server!"
           EOF
