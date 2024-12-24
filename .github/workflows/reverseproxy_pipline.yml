@@ -10,21 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
       # SSH into the first server and then into the second server
-      - name: SSH into the first server and connect to the second
+      - name: SSH into the server
         run: |
-          # SSH into the first server
           ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOF'
-            # Echo success message after connecting to the first server
-            echo "Successfully connected to the first server (65.108.2.208)!"
-            
-            # SSH into the second server from the first one
-            ssh -o StrictHostKeyChecking=no root@192.168.37.78 << 'INNER_EOF'
-              # Echo success message after connecting to the second server
-              echo "Successfully connected to the second server (192.168.37.64)!"
-            INNER_EOF
+            echo "Successfully connected to the public server!"
           EOF
