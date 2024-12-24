@@ -1,4 +1,4 @@
-name: SSH into PROXY_Servers
+name: SSH into PROXY_Serverss
 
 on:
   push:
