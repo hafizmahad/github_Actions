@@ -1,4 +1,4 @@
-name: SSH into Public Server
+name: SSH into Public and Private Servers
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main  # Or any branch that you want to trigger on
 
 jobs:
-  ssh-into-server:
+  ssh-into-servers:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,16 +14,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up SSH agent with the private key
-      - name: Set up SSH
+      # Set up SSH agent with the first private key (for the public server)
+      - name: Set up SSH for Public Server
         uses: webfactory/ssh-agent@v0.5.4
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # First private key
 
-      # SSH into the remote server
-      - name: SSH into the server
+      # SSH into the public server
+      - name: SSH into Public Server
         run: |
           # SSH into the public server
           ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOF'
             echo "Successfully connected to the public server!"
+            
+            # Add the second private key for the private server (from the public server)
+            echo "${{ secrets.SECOND_PRIVATE_KEY }}" > ~/.ssh/id_rsa_second
+            chmod 600 ~/.ssh/id_rsa_second
+            
+            # SSH into the private server using the second key
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'INNER_EOF'
+              echo "Successfully connected to the private server!"
+            INNER_EOF
           EOF
