@@ -1,0 +1,26 @@
+name: SSH into Jump Box and Target Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up SSH agent and add key
+      uses: webfactory/ssh-agent@v0.5.4
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: SSH to Jump Box and Target Server
+      run: |
+        # SSH into the jump box and then to the private server (no user specified)
+        ssh -o StrictHostKeyChecking=no jumpbox "
+          ssh -o StrictHostKeyChecking=no ${{ secrets.TARGET_SERVER_HOST }} 'echo \"Successfully connected to the private server!\"'
+        "
