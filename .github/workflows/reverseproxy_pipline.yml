@@ -32,7 +32,7 @@ jobs:
             chmod 600 ~/.ssh/id_rsa_second
             
             # SSH into the private server using the second key
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'INNER_EOF'
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'EOF2'
               echo "Successfully connected to the private server!"
-            INNER_EOF
+            EOF2
           EOF
