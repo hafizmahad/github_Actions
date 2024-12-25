@@ -3,35 +3,33 @@ name: SSH into Public and Private Servers
 on:
   push:
     branches:
-      - main  # Or any branch that you want to trigger on
+      - main
 
 jobs:
   ssh-into-servers:
     runs-on: ubuntu-latest
     
     steps:
-      # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up SSH agent with the first private key (for the public server)
       - name: Set up SSH for Public Server
         uses: webfactory/ssh-agent@v0.5.4
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      # SSH into the public server and then the private server
       - name: SSH into Public Server and Private Server
         run: |
-          ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOSSH'
+          # Force pseudo-terminal allocation with -tt and use single SSH command
+          ssh -tt -o StrictHostKeyChecking=no root@65.108.2.208 /bin/bash << 'EOL'
             echo "Successfully connected to the public server!"
             
-            # Add the second private key for the private server
+            # Create second key file
             echo "${{ secrets.SECOND_PRIVATE_KEY }}" > ~/.ssh/id_rsa_second
             chmod 600 ~/.ssh/id_rsa_second
             
-            # SSH into the private server using the second key
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'EOSSH2'
-              echo "Successfully connected to the private server!"
-            EOSSH2
-          EOSSH
+            # Connect to private server with single command
+            ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 "echo 'Successfully connected to private server!' && bash -l"
+            
+            exit
+          EOL
