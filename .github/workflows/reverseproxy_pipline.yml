@@ -20,8 +20,7 @@ jobs:
 
       - name: SSH into Public Server and Private Server
         run: |
-          # Force pseudo-terminal allocation with -tt and use single SSH command
-          ssh -tt -o StrictHostKeyChecking=no root@65.108.2.208 /bin/bash << 'EOL'
+          ssh -o StrictHostKeyChecking=no root@65.108.2.208 '
             echo "Successfully connected to the public server!"
             
             # Create second key file
@@ -29,14 +28,13 @@ jobs:
             chmod 600 ~/.ssh/id_rsa_second
             
             # Connect to private server and restart the Docker container
-            ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 "
-              echo 'Successfully connected to private server!'
-              echo 'Restarting Docker container 922c1fa1dcb7...'
-              docker restart 922c1fa1dcb7
-              echo 'Waiting for container to restart...'
-              sleep 5
-              docker ps | grep 922c1fa1dcb7
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 "
+              echo \"Successfully connected to private server!\"
+              echo \"Restarting Docker container 922c1fa1dcb7...\"
+              docker restart 922c1fa1dcb7 && \
+              echo \"Waiting for container to restart...\" && \
+              sleep 5 && \
+              docker ps --filter \"id=922c1fa1dcb7\" --format \"{{.ID}} {{.Status}}\"
             "
-            
-            exit
-          EOL
+            exit 0
+          '
