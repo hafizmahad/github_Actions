@@ -28,8 +28,15 @@ jobs:
             echo "${{ secrets.SECOND_PRIVATE_KEY }}" > ~/.ssh/id_rsa_second
             chmod 600 ~/.ssh/id_rsa_second
             
-            # Connect to private server with single command
-            ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 "echo 'Successfully connected to private server!' && bash -l"
+            # Connect to private server and restart the Docker container
+            ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 "
+              echo 'Successfully connected to private server!'
+              echo 'Restarting Docker container 922c1fa1dcb7...'
+              docker restart 922c1fa1dcb7
+              echo 'Waiting for container to restart...'
+              sleep 5
+              docker ps | grep 922c1fa1dcb7
+            "
             
             exit
           EOL
