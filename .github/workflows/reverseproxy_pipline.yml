@@ -8,7 +8,7 @@ on:
 jobs:
   ssh-into-servers:
     runs-on: ubuntu-latest
-
+    
     steps:
       # Checkout the repository
       - name: Checkout repository
@@ -18,21 +18,20 @@ jobs:
       - name: Set up SSH for Public Server
         uses: webfactory/ssh-agent@v0.5.4
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # First private key
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      # SSH into the public server
-      - name: SSH into Public Server
+      # SSH into the public server and then the private server
+      - name: SSH into Public Server and Private Server
         run: |
-          # SSH into the public server
-          ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOF'
+          ssh -o StrictHostKeyChecking=no root@65.108.2.208 << 'EOSSH'
             echo "Successfully connected to the public server!"
             
-            # Add the second private key for the private server (from the public server)
+            # Add the second private key for the private server
             echo "${{ secrets.SECOND_PRIVATE_KEY }}" > ~/.ssh/id_rsa_second
             chmod 600 ~/.ssh/id_rsa_second
             
             # SSH into the private server using the second key
-            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'EOF2'
+            ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa_second root@192.168.37.78 << 'EOSSH2'
               echo "Successfully connected to the private server!"
-            EOF2
-          EOF
+            EOSSH2
+          EOSSH
