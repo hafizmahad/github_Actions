@@ -33,10 +33,6 @@ on:
         required: false
         type: string
 
-env:
-  SERVER_USER: ubuntu
-  APP_ROOT: /path/to/your/app
-
 jobs:
   pull_branch_job:
     runs-on: ubuntu-latest
@@ -51,24 +47,13 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Pull latest branch in mt_app container
+    - name: Pull the latest branch
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Pull the latest branch or perform a Git pull inside the container
-          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && git pull origin main'
-
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Pull the latest branch
+          git -C /path/to/your/app pull origin main
         EOF
 
   assets_install_job:
@@ -84,24 +69,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Install assets inside mt_app container
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Run asset installation commands inside the container
-          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && npm install && npm run build'
-
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Install assets inside the mt_app container
+          sudo docker exec -w /app mt_app php bin/console fos:js-routing:dump --format=json --target=public/assets/js/fos_js_routes.json -e prod
+          sudo docker exec -w /app mt_app yarn --cwd /app encore production
         EOF
 
   database_update_job:
@@ -117,24 +92,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Update database inside mt_app container
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Run database migrations inside the container
-          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan migrate'
-
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Run database updates
+          sudo docker exec -w /app mt_app php bin/console doctrine:cache:clear-metadata
+          sudo docker exec -w /app mt_app php bin/console doctrine:schema:update --force
         EOF
 
   clear_query_result_job:
@@ -150,24 +115,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Clear query results cache inside mt_app container
+    - name: Clear query result cache inside mt_app container
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Clear query result cache inside the container
-          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan cache:clear'
-
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Clear query result cache
+          sudo docker exec -w /app mt_app php bin/console doctrine:cache:clear-query
+          sudo docker exec -w /app mt_app php bin/console doctrine:cache:clear-result
         EOF
 
   cache_clear_job:
@@ -183,24 +138,14 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Clear application cache inside mt_app container
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Clear the application cache inside the container
-          sudo docker exec -i $CONTAINER_ID bash -c 'cd /path/to/your/app && php artisan cache:clear'
-
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Clear the application cache
+          sudo docker exec -w /app mt_app php bin/console ca:cl -e prod
+          sudo docker exec -w /app mt_app bash docker-entrypoint.sh
         EOF
 
   custom_command_job:
@@ -216,22 +161,11 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
-        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding EC2 host key"
+        ssh-keyscan ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
     - name: Execute custom command inside mt_app container
       run: |
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP }} $SERVER_USER@${{ secrets.EC2_HOST }} << 'EOF'
-          # Get the container ID dynamically based on the container name (mt_app)
-          CONTAINER_ID=$(sudo docker ps -q -f "name=mt_app")
-
-          # Check if the mt_app container is running
-          if [ -z "$CONTAINER_ID" ]; then
-            echo "mt_app container is not running. Exiting."
-            exit 1
-          fi
-
-          # Execute the user-provided custom command inside the container
-          echo "Executing custom command inside mt_app container: ${{ github.event.inputs.custom_command }}"
-          sudo docker exec -i $CONTAINER_ID bash -c "${{ github.event.inputs.custom_command }}"
+        ssh -o StrictHostKeyChecking=no -T ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          # Execute custom command inside mt_app container
+          sudo docker exec -w /app mt_app php bin/console "${{ github.event.inputs.custom_command }}"
         EOF
