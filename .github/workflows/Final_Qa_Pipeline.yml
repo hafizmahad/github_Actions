@@ -1,4 +1,4 @@
-name: Manage mt_app on EC2
+name: Qa_Pipeline
 
 on:
   workflow_dispatch:
