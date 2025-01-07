@@ -1,4 +1,4 @@
-name: Crm
+name: Prod_Crm
 
 on:
   workflow_dispatch:
