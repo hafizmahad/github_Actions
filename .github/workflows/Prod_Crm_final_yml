@@ -34,32 +34,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Step 2: Set Up SSH Key
-      - name: Set up SSH access
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      # Step 2: Set up SSH Key
+      - name: Set up SSH
         run: |
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          # Create .ssh directory if it doesn't exist
+          mkdir -p ~/.ssh
+
+          # Add the SSH private key (REACT_KEY) to the id_rsa file
+          echo "${{ secrets.REACT_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo "SSH key configured successfully."
+
+          # Add server's SSH key to known hosts to avoid host verification prompts
+          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.REACT_KEY }}
 
       # Step 3: Pull Branch (if enabled)
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
+          ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
 
       # Step 4: Docker Build and Up (if enabled)
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
         run: |
           echo "Building Docker containers..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
+          ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f ${app_root}/docker-compose.yml up -d --build"
 
       # Step 5: Execute Extra Commands (if provided)
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
           echo "Executing extra commands inside the container..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
+          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
