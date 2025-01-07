@@ -1,4 +1,4 @@
-name: Crm_Prod_Piplinessss
+name: Crm_Prod_Pipeline
 
 on:
   workflow_dispatch:
@@ -23,54 +23,44 @@ jobs:
   ci_cd_pipeline:
     runs-on: ubuntu-latest
 
-    # Global environment variables for the job
     env:
       server_user: ${{ secrets.SERVER_USER }}
-      server_ip: ${{ secrets.PROD_SERVER_IP }}  # Updated to PROD_SERVER_IP
+      server_ip: ${{ secrets.PROD_SERVER_IP }}
       app_root: /var/www/html/crm.marshub.com
 
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Set up SSH Key
       - name: Set up SSH access
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}  # Updated to SSH_PRIVATE_KEY_PROD
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
         run: |
-          # Create the .ssh directory
           mkdir -p ~/.ssh
-          # Add the private key to id_rsa
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo "SSH key configured successfully."
-          
-      # Pull Branch (if enabled)
+
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
-          ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
-          
-      # Docker Build and Up (if enabled)
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
+
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
         run: |
           echo "Building Docker containers..."
-          ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f ${app_root}/docker-compose.yml up -d --build"
-          
-          # Create the temp_data directory inside the container
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "docker-compose -f ${app_root}/docker-compose.yml up -d --build"
+
           echo "Creating temp_data directory inside the container..."
-          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod mkdir -p /var/temp_data"
-          
-          # Set permissions for the temp_data directory
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "docker exec -i crm_marshub_prod mkdir -p /var/temp_data"
+
           echo "Setting permissions for the temp_data directory..."
-          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod chmod 777 /var/temp_data"
-          
-      # Execute Extra Commands (if provided)
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "docker exec -i crm_marshub_prod chmod 777 /var/temp_data"
+
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
           echo "Executing extra commands inside the container..."
-          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
+          ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
