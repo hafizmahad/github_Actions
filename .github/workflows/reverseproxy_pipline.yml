@@ -38,27 +38,21 @@ jobs:
       - name: Set up SSH access
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY_PROD }}  # Updated to SSH_PRIVATE_KEY_PROD
-          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}  # if you store known hosts as a secret
         run: |
           # Create the .ssh directory
           mkdir -p ~/.ssh
           # Add the private key to id_rsa
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # If SERVER_KNOWN_HOSTS is provided, add it to known_hosts
-          if [ -n "$SERVER_KNOWN_HOSTS" ]; then
-            echo "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
-            chmod 644 ~/.ssh/known_hosts
-          fi
-          echo "SSH key and known hosts file configured successfully."
-
+          echo "SSH key configured successfully."
+          
       # Pull Branch (if enabled)
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
           ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
-
+          
       # Docker Build and Up (if enabled)
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
@@ -73,7 +67,7 @@ jobs:
           # Set permissions for the temp_data directory
           echo "Setting permissions for the temp_data directory..."
           ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod chmod 777 /var/temp_data"
-
+          
       # Execute Extra Commands (if provided)
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
