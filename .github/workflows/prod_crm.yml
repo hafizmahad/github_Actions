@@ -1,4 +1,4 @@
-name: tetsst
+name: Crm
 
 on:
   workflow_dispatch:
@@ -7,59 +7,60 @@ on:
         description: 'Pull the branch from Git'
         required: true
         default: 'false'
-        type: boolean  # Checkbox-like input (true/false)
+        type: boolean
       docker_build:
         description: 'Run Docker build and up'
         required: true
         default: 'false'
-        type: boolean  # Checkbox-like input (true/false)
+        type: boolean
       extra_commands:
         description: 'Extra commands to execute inside the container (e.g. php artisan migrate)'
         required: false
         default: ''
-        type: string  # String input for extra commands to run inside the container
+        type: string
 
 jobs:
   ci_cd_pipeline:
     runs-on: ubuntu-latest
 
-    # Global environment variables for the job
     env:
       server_user: ${{ secrets.SERVER_USER }}
       server_ip: ${{ secrets.SERVER_IP }}
-      app_root: /var/www/my-app  # Hardcoded application directory
+      app_root: /var/www/my-app
 
     steps:
-      # Step 1: Checkout the Repository
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Step 2: Set Up SSH Key
       - name: Set up SSH access
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+          echo -e "Host *\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
           echo "SSH key configured successfully."
 
-      # Step 3: Pull Branch (if enabled)
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
+          ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
 
-      # Step 4: Docker Build and Up (if enabled)
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
         run: |
           echo "Building Docker containers..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
+          ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
 
-      # Step 5: Execute Extra Commands (if provided)
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
           echo "Executing extra commands inside the container..."
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
+          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
