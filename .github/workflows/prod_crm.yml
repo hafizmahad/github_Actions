@@ -1,0 +1,74 @@
+name: Crm
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_branch:
+        description: 'Pull the branch from Git'
+        required: true
+        default: 'false'
+        type: boolean  # Checkbox-like input (true/false)
+      docker_build:
+        description: 'Run Docker build and up'
+        required: true
+        default: 'false'
+        type: boolean  # Checkbox-like input (true/false)
+      extra_commands:
+        description: 'Extra commands to execute inside the container (e.g. php artisan migrate)'
+        required: false
+        default: ''
+        type: string  # String input for extra commands to run inside the container
+
+jobs:
+  ci_cd_pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the Repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Set Up SSH Key
+      - name: Set up SSH access
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          echo "SSH key and known hosts file configured successfully."
+
+      # Step 3: Pull Branch (if enabled)
+      - name: Pull Branch
+        if: ${{ github.event.inputs.pull_branch == 'true' }}
+        run: |
+          echo "Pulling the production branch..."
+          ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
+        env:
+          server_user: ${{ secrets.SERVER_USER }}
+          server_ip: ${{ secrets.SERVER_IP }}
+          app_root: ${{ secrets.APP_ROOT }}
+
+      # Step 4: Docker Build and Up (if enabled)
+      - name: Docker Build
+        if: ${{ github.event.inputs.docker_build == 'true' }}
+        run: |
+          echo "Building Docker containers..."
+          ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
+        env:
+          server_user: ${{ secrets.SERVER_USER }}
+          server_ip: ${{ secrets.SERVER_IP }}
+          app_root: ${{ secrets.APP_ROOT }}
+
+      # Step 5: Execute Extra Commands (if provided)
+      - name: Execute Extra Commands
+        if: ${{ github.event.inputs.extra_commands != '' }}
+        run: |
+          echo "Executing extra commands inside the container..."
+          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
+        env:
+          server_user: ${{ secrets.SERVER_USER }}
+          server_ip: ${{ secrets.SERVER_IP }}
+          app_root: ${{ secrets.APP_ROOT }}
