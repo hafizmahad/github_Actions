@@ -27,7 +27,7 @@ jobs:
     env:
       server_user: ${{ secrets.SERVER_USER }}
       server_ip: ${{ secrets.SERVER_IP }}
-      app_root: /var/www/my-app
+      app_root: /var/www/
 
     steps:
       # Checkout repository
