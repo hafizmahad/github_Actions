@@ -1,4 +1,4 @@
-name: Prod_Crm
+name: tetsst
 
 on:
   workflow_dispatch:
@@ -23,6 +23,12 @@ jobs:
   ci_cd_pipeline:
     runs-on: ubuntu-latest
 
+    # Global environment variables for the job
+    env:
+      server_user: ${{ secrets.SERVER_USER }}
+      server_ip: ${{ secrets.SERVER_IP }}
+      app_root: /var/www/my-app  # Hardcoded application directory
+
     steps:
       # Step 1: Checkout the Repository
       - name: Checkout repository
@@ -32,43 +38,28 @@ jobs:
       - name: Set up SSH access
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
         run: |
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          echo "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          echo "SSH key and known hosts file configured successfully."
+          echo "SSH key configured successfully."
 
       # Step 3: Pull Branch (if enabled)
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
-          ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
-        env:
-          server_user: ${{ secrets.SERVER_USER }}
-          server_ip: ${{ secrets.SERVER_IP }}
-          app_root: ${{ secrets.APP_ROOT }}
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
 
       # Step 4: Docker Build and Up (if enabled)
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
         run: |
           echo "Building Docker containers..."
-          ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
-        env:
-          server_user: ${{ secrets.SERVER_USER }}
-          server_ip: ${{ secrets.SERVER_IP }}
-          app_root: ${{ secrets.APP_ROOT }}
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f docker-compose.yml up -d --build"
 
       # Step 5: Execute Extra Commands (if provided)
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
           echo "Executing extra commands inside the container..."
-          ssh ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
-        env:
-          server_user: ${{ secrets.SERVER_USER }}
-          server_ip: ${{ secrets.SERVER_IP }}
-          app_root: ${{ secrets.APP_ROOT }}
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${server_user}@${server_ip} "docker exec -i crm_marshub_prod ${github.event.inputs.extra_commands}"
