@@ -1,4 +1,4 @@
-name: mahad
+name: tetsstsssss
 
 on:
   workflow_dispatch:
@@ -7,17 +7,17 @@ on:
         description: 'Pull the branch from Git'
         required: true
         default: 'false'
-        type: boolean  # Checkbox-like input (true/false)
+        type: boolean
       docker_build:
         description: 'Run Docker build and up'
         required: true
         default: 'false'
-        type: boolean  # Checkbox-like input (true/false)
+        type: boolean
       extra_commands:
         description: 'Extra commands to execute inside the container (e.g. php artisan migrate)'
         required: false
         default: ''
-        type: string  # String input for extra commands to run inside the container
+        type: string
 
 jobs:
   ci_cd_pipeline:
@@ -27,44 +27,46 @@ jobs:
     env:
       server_user: ${{ secrets.SERVER_USER }}
       server_ip: ${{ secrets.SERVER_IP }}
-      app_root: /var/www/my-app  # Hardcoded application directory
+      app_root: /var/www/my-app
 
     steps:
-      # Step 1: Checkout the Repository
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # Step 2: Set up SSH Key
-      - name: Set up SSH
-        run: |
-          # Create .ssh directory if it doesn't exist
-          mkdir -p ~/.ssh
-
-          # Add the SSH private key (REACT_KEY) to the id_rsa file
-          echo "${{ secrets.REACT_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          # Add server's SSH key to known hosts to avoid host verification prompts
-          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-
+      # Set up SSH Key
+      - name: Set up SSH access
         env:
           SSH_PRIVATE_KEY: ${{ secrets.REACT_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}  # if you store known hosts as a secret
+        run: |
+          # Create the .ssh directory
+          mkdir -p ~/.ssh
+          # Add the private key to id_rsa
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # If SERVER_KNOWN_HOSTS is provided, add it to known_hosts
+          if [ -n "$SERVER_KNOWN_HOSTS" ]; then
+            echo "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 644 ~/.ssh/known_hosts
+          fi
+          echo "SSH key and known hosts file configured successfully."
 
-      # Step 3: Pull Branch (if enabled)
+      # Pull Branch (if enabled)
       - name: Pull Branch
         if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           echo "Pulling the production branch..."
           ssh ${server_user}@${server_ip} "cd ${app_root} && git pull origin production"
 
-      # Step 4: Docker Build and Up (if enabled)
+      # Docker Build and Up (if enabled)
       - name: Docker Build
         if: ${{ github.event.inputs.docker_build == 'true' }}
         run: |
           echo "Building Docker containers..."
           ssh ${server_user}@${server_ip} "cd ${app_root} && docker-compose -f ${app_root}/docker-compose.yml up -d --build"
 
-      # Step 5: Execute Extra Commands (if provided)
+      # Execute Extra Commands (if provided)
       - name: Execute Extra Commands
         if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
