@@ -1,4 +1,4 @@
-name: Crm_Prod_Pipeline
+name: Self_hosted_runner
 
 on:
   workflow_dispatch:
