@@ -1,4 +1,4 @@
-name: Qa_Pipeline
+name: Self_hosted_Qa_Pipeline
 
 on:
   workflow_dispatch:
@@ -34,10 +34,9 @@ on:
         type: string
 
 jobs:
-  pull_branch_job:
-    runs-on: ubuntu-latest
+  pull_branch_job:    
+    runs-on: self-hosted
     if: ${{ github.event.inputs.pull_branch == 'true' }}
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
