@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      execute_extra_commands:
+        description: "Execute extra commands in the container"
+        required: false
+        default: false
+        type: boolean
       extra_commands:
         description: "Commands to execute inside the container"
         required: false
@@ -94,9 +99,17 @@ jobs:
           docker exec -i \$CONTAINER_NAME chmod 777 /var/temp_data
           EOF
 
-      # Step 5: Change APP_ENV in .env.local (if the input is true)
-      - name: Change APP_ENV in .env.local
+      # Step 5: Change APP_ENV in .env.local (only if the input is true)
+      - name: Validate APP_ENV Change Input
         if: ${{ github.event.inputs.change_app_env == true }}
+        run: |
+          if [[ -z "${{ github.event.inputs.app_env_choice }}" ]]; then
+            echo "APP_ENV choice is required when 'Change APP_ENV' checkbox is selected."
+            exit 1
+          fi
+
+      - name: Change APP_ENV in .env.local
+        if: ${{ github.event.inputs.change_app_env == true && github.event.inputs.app_env_choice != '' }}
         run: |
           echo "Switching APP_ENV to: ${{ github.event.inputs.app_env_choice }}"
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
@@ -109,8 +122,16 @@ jobs:
           echo "Modified .env.local content: $modified_content"
 
       # Step 6: Execute Extra Commands (only if the input is true)
+      - name: Validate Extra Commands Input
+        if: ${{ github.event.inputs.execute_extra_commands == true }}
+        run: |
+          if [[ -z "${{ github.event.inputs.extra_commands }}" ]]; then
+            echo "No extra commands provided. Skipping this step."
+            exit 1
+          fi
+
       - name: Execute Extra Commands
-        if: ${{ github.event.inputs.extra_commands != '' }}
+        if: ${{ github.event.inputs.execute_extra_commands == true && github.event.inputs.extra_commands != '' }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
           docker exec -i \$CONTAINER_NAME php ${{ github.event.inputs.extra_commands }}
