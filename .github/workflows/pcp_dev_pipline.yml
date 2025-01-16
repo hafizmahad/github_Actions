@@ -17,10 +17,26 @@ on:
         description: "Commands to execute inside the container"
         required: false
         default: ""
+        type: string
+      change_app_env:
+        description: "Should we change the APP_ENV in .env.local?"
+        required: false
+        default: false
+        type: boolean
+      app_env_choice:
+        description: "Choose APP_ENV (development or production)"
+        required: false
+        default: "development"
+        type: choice
+        options:
+          - "development"
+          - "production"
 
 env:
   SERVER_USER: root
   APP_ROOT: /root/app/pcpdev.ccjk.com
+  CONTAINER_NAME: pcpdevccjkcom_app_1
+  ENV_FILE_PATH: /root/app/pcpdev.ccjk.com/.env.local
 
 jobs:
   deploy:
@@ -44,17 +60,17 @@ jobs:
           PUBLIC_SERVER_IP_DEV: ${{ secrets.PUBLIC_SERVER_IP_DEV }}
           PRIVATE_SERVER_IP_DEV: ${{ secrets.PRIVATE_SERVER_IP_DEV }}
 
-      # Step 3: Pull Branch
+      # Step 3: Pull Branch (only if the input is true)
       - name: Pull branch
-        if: ${{ github.event.inputs.pull_branch == 'true' }}
+        if: ${{ github.event.inputs.pull_branch == true }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
           git -C $APP_ROOT pull origin development
           EOF
 
-      # Step 4: Docker Compose Up
+      # Step 4: Docker Compose Up (only if the input is true)
       - name: Docker Compose Up
-        if: ${{ github.event.inputs.docker_compose_up == 'true' }}
+        if: ${{ github.event.inputs.docker_compose_up == true }}
         run: |
           # Step 1: Bring down the container
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
@@ -63,7 +79,7 @@ jobs:
 
           # Step 2: Rebuild and bring up the container
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker-compose -f $APP_ROOT/docker-compose-dev.yaml up -d --build
+          docker-compose -f $APP_ROOT/docker-compose-dev.yml up -d --build
           EOF
 
           # Step 3: Create directory inside the container and set permissions
@@ -78,10 +94,24 @@ jobs:
           docker exec -i \$CONTAINER_NAME chmod 777 /var/temp_data
           EOF
 
-      # Step 5: Execute Extra Commands
+      # Step 5: Change APP_ENV in .env.local (if the input is true)
+      - name: Change APP_ENV in .env.local
+        if: ${{ github.event.inputs.change_app_env == true }}
+        run: |
+          echo "Switching APP_ENV to: ${{ github.event.inputs.app_env_choice }}"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          # Update APP_ENV in .env.local
+          sed -i 's/\\(APP_ENV=\\).*/\\1${{ github.event.inputs.app_env_choice }}' $APP_ROOT/.env.local
+          EOF
+          
+          # Display modified content of .env.local
+          modified_content=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} "cat $APP_ROOT/.env.local")
+          echo "Modified .env.local content: $modified_content"
+
+      # Step 6: Execute Extra Commands (only if the input is true)
       - name: Execute Extra Commands
-        if: ${{ github.event.inputs.execute_extra_commands == 'true' }}
+        if: ${{ github.event.inputs.extra_commands != '' }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker exec -i crm_marshub_dev php ${{ github.event.inputs.extra_commands }}
+          docker exec -i \$CONTAINER_NAME php ${{ github.event.inputs.extra_commands }}
           EOF
