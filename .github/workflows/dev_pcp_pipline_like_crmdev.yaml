@@ -29,7 +29,7 @@ on:
         type: boolean
       app_env_choice:
         description: "Choose APP_ENV (development or production)"
-        required: false
+        required: true
         default: "development"
         type: choice
         options:
@@ -86,17 +86,15 @@ jobs:
           docker-compose -f $APP_ROOT/docker-compose-dev.yaml up -d --build
           EOF
 
-      - name: Change APP_ENV to prod 
+      - name: Change APP_ENV dynamically
+        if: ${{ github.event.inputs.change_app_env == 'true' }}
         run: |
+          echo "Switching APP_ENV to: ${{ github.event.inputs.app_env_choice }}"
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          # Change APP_ENV to prod
-           sed -i "s/\\(APP_ENV=\\).*/\\1prod/" /root/app/pcpdev.ccjk.com/.env.local
-
-          # Verify the change
-           echo "Modified .env.local content:"
-           cat /root/app/pcpdev.ccjk.com/.env.local
+          # Change APP_ENV dynamically
+          sed -i "s/\\(APP_ENV=\\).*/\\1${{ github.event.inputs.app_env_choice }}/" /root/app/pcpdev.ccjk.com/.env.local
+          echo "Modified .env.local content:"
           EOF
-
 
 
       # Step 5: Execute Extra Commands
