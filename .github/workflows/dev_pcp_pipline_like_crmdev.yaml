@@ -1,0 +1,94 @@
+name: dev_pcp_pipline_like_crmdev
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_branch:
+        description: "Pull the branch from the repository"
+        required: false
+        default: false
+        type: boolean
+      docker_compose_up:
+        description: "Run Docker Compose to bring up services"
+        required: false
+        default: false
+        type: boolean
+      execute_extra_commands:
+        description: "Execute extra commands in the container"
+        required: false
+        default: false
+        type: boolean
+      extra_commands:
+        description: "Commands to execute inside the container"
+        required: false
+        default: ""
+
+env:
+  SERVER_USER: root
+  APP_ROOT: /root/app/pcpdev.ccjk.com
+  CONTAINER_NAME: pcpdevccjkcom_app_1
+  ENV_FILE_PATH: /root/app/pcpdev.ccjk.com/.env.local
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # Step 2: Set up SSH
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_DEV }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.PUBLIC_SERVER_IP_DEV }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding public server key"
+          ssh-keyscan ${{ secrets.PRIVATE_SERVER_IP_DEV }} >> ~/.ssh/known_hosts 2>/dev/null || echo "Error adding private server key"
+        env:
+          SSH_PRIVATE_KEY_DEV: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+          PUBLIC_SERVER_IP_DEV: ${{ secrets.PUBLIC_SERVER_IP_DEV }}
+          PRIVATE_SERVER_IP_DEV: ${{ secrets.PRIVATE_SERVER_IP_DEV }}
+
+      # Step 3: Pull Branch
+      - name: Pull branch
+        if: ${{ github.event.inputs.pull_branch == 'true' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          git -C $APP_ROOT pull origin development
+          EOF
+
+      # Step 4: Docker Compose Up
+      - name: Docker Compose Up
+        if: ${{ github.event.inputs.docker_compose_up == 'true' }}
+        run: |
+          # Step 1: Bring down the container
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          docker-compose -f $APP_ROOT/docker-compose-dev.yml down
+          EOF
+
+          # Step 2: Rebuild and bring up the container
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          docker-compose -f $APP_ROOT/docker-compose-dev.yml up -d --build
+          EOF
+
+          # Step 3: Create directory inside the container and set permissions
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          # Define the container name
+          CONTAINER_NAME=crm_marshub_dev
+          
+          # Create the temp_data directory inside the container
+          docker exec -i \$CONTAINER_NAME mkdir -p /var/temp_data
+          
+          # Set permissions for the temp_data directory
+          docker exec -i \$CONTAINER_NAME chmod 777 /var/temp_data
+          EOF
+
+      # Step 5: Execute Extra Commands
+      - name: Execute Extra Commands
+        if: ${{ github.event.inputs.execute_extra_commands == 'true' }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          docker exec -i crm_marshub_dev php ${{ github.event.inputs.extra_commands }}
+          EOF
