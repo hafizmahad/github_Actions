@@ -86,24 +86,16 @@ jobs:
           docker-compose -f $APP_ROOT/docker-compose-dev.yaml up -d --build
           EOF
 
-      - name: Change APP_ENV in .env.local
-        if: ${{ github.event.inputs.change_app_env == true && github.event.inputs.app_env_choice != '' }}
+      - name: Change APP_ENV to prod 
         run: |
-             echo "Switching APP_ENV to: ${{ github.event.inputs.app_env_choice }}"
-             ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-              # Check if .env.local exists
-              if [ ! -f "$APP_ROOT/.env.local" ]; then
-              echo ".env.local not found!"
-               exit 1
-               fi
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
+          # Change APP_ENV to prod
+           sed -i "s/\\(APP_ENV=\\).*/\\1prod/" /root/app/pcpdev.ccjk.com/.env.local
 
-                 # Update APP_ENV in .env.local
-                  sed -i "s/\(APP_ENV=\).*/\1${{ github.event.inputs.app_env_choice }}/" $APP_ROOT/.env.local
-                   EOF
-    
-                # Display modified content of .env.local
-               modified_content=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} "cat $APP_ROOT/.env.local")
-                echo "Modified .env.local content: $modified_content"
+          # Verify the change
+           echo "Modified .env.local content:"
+           cat /root/app/pcpdev.ccjk.com/.env.local
+          EOF
 
 
 
