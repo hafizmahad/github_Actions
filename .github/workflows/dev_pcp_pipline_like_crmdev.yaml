@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
       docker_compose_up:
-        description: "Run Docker Compose to bring up services"
+        description: "Run Docker Compose to bring"
         required: false
         default: false
         type: boolean
@@ -22,6 +22,19 @@ on:
         description: "Commands to execute inside the container"
         required: false
         default: ""
+      change_app_env:
+        description: "Change the APP_ENV"
+        required: false
+        default: false
+        type: boolean
+      app_env_choice:
+        description: "Choose APP_ENV (development or production)"
+        required: false
+        default: "development"
+        type: choice
+        options:
+          - "development"
+          - "production"
 
 env:
   SERVER_USER: root
@@ -80,5 +93,5 @@ jobs:
         if: ${{ github.event.inputs.execute_extra_commands == 'true' }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker exec -i crm_marshub_dev php ${{ github.event.inputs.extra_commands }}
+          docker exec -i pcpdevccjkcom_app_1 php ${{ github.event.inputs.extra_commands }}
           EOF
