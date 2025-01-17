@@ -65,25 +65,15 @@ jobs:
         run: |
           # Step 1: Bring down the container
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker-compose -f $APP_ROOT/docker-compose-dev.yml down
+          docker-compose -f $APP_ROOT/docker-compose-dev.yaml down
           EOF
 
           # Step 2: Rebuild and bring up the container
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker-compose -f $APP_ROOT/docker-compose-dev.yml up -d --build
+          docker-compose -f $APP_ROOT/docker-compose-dev.yaml up -d --build
           EOF
 
-          # Step 3: Create directory inside the container and set permissions
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          # Define the container name
-          CONTAINER_NAME=crm_marshub_dev
-          
-          # Create the temp_data directory inside the container
-          docker exec -i \$CONTAINER_NAME mkdir -p /var/temp_data
-          
-          # Set permissions for the temp_data directory
-          docker exec -i \$CONTAINER_NAME chmod 777 /var/temp_data
-          EOF
+
 
       # Step 5: Execute Extra Commands
       - name: Execute Extra Commands
