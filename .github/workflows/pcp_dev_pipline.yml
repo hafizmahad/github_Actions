@@ -1,4 +1,4 @@
-name: Dev_Pcp_Pipeline
+name: Working___dev_pcp_pipline_like_crmdev_without_envthings
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: false
         type: boolean
       docker_compose_up:
-        description: "Run Docker Compose to bring up"
+        description: "Run Docker Compose to bring"
         required: false
         default: false
         type: boolean
@@ -22,7 +22,6 @@ on:
         description: "Commands to execute inside the container"
         required: false
         default: ""
-        type: string
       change_app_env:
         description: "Change the APP_ENV"
         required: false
@@ -35,7 +34,7 @@ on:
         type: choice
         options:
           - "development"
-          - "production"
+          - "prod"
 
 env:
   SERVER_USER: root
@@ -65,17 +64,17 @@ jobs:
           PUBLIC_SERVER_IP_DEV: ${{ secrets.PUBLIC_SERVER_IP_DEV }}
           PRIVATE_SERVER_IP_DEV: ${{ secrets.PRIVATE_SERVER_IP_DEV }}
 
-      # Step 3: Pull Branch (only if the input is true)
+      # Step 3: Pull Branch
       - name: Pull branch
-        if: ${{ github.event.inputs.pull_branch == true }}
+        if: ${{ github.event.inputs.pull_branch == 'true' }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
           git -C $APP_ROOT pull origin development
           EOF
 
-      # Step 4: Docker Compose Up (only if the input is true)
+      # Step 4: Docker Compose Up
       - name: Docker Compose Up
-        if: ${{ github.event.inputs.docker_compose_up == true }}
+        if: ${{ github.event.inputs.docker_compose_up == 'true' }}
         run: |
           # Step 1: Bring down the container
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
@@ -87,41 +86,22 @@ jobs:
           docker-compose -f $APP_ROOT/docker-compose-dev.yaml up -d --build
           EOF
 
-
-      # Step 5: Change APP_ENV in .env.local (only if the input is true)
-      - name: Validate APP_ENV Change Input
-        if: ${{ github.event.inputs.change_app_env == true }}
+      - name: Change APP_ENV to prod 
         run: |
-          if [[ -z "${{ github.event.inputs.app_env_choice }}" ]]; then
-            echo "APP_ENV choice is required when 'Change APP_ENV' checkbox is selected."
-            exit 1
-          fi
-
-      - name: Change APP_ENV in .env.local
-        if: ${{ github.event.inputs.change_app_env == true && github.event.inputs.app_env_choice != '' }}
-        run: |
-          echo "Switching APP_ENV to: ${{ github.event.inputs.app_env_choice }}"
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          # Update APP_ENV in .env.local
-          sed -i 's/\\(APP_ENV=\\).*/\\1${{ github.event.inputs.app_env_choice }}' $APP_ROOT/.env.local
+          # Change APP_ENV to prod
+           sed -i "s/\\(APP_ENV=\\).*/\\1prod/" /root/app/pcpdev.ccjk.com/.env.local
+
+          # Verify the change
+           echo "Modified .env.local content:"
           EOF
-          
-          # Display modified content of .env.local
-          modified_content=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} "cat $APP_ROOT/.env.local")
-          echo "Modified .env.local content: $modified_content"
 
-      # Step 6: Execute Extra Commands (only if the input is true)
-      - name: Validate Extra Commands Input
-        if: ${{ github.event.inputs.execute_extra_commands == true }}
-        run: |
-          if [[ -z "${{ github.event.inputs.extra_commands }}" ]]; then
-            echo "No extra commands provided. Skipping this step."
-            exit 1
-          fi
 
+
+      # Step 5: Execute Extra Commands
       - name: Execute Extra Commands
-        if: ${{ github.event.inputs.execute_extra_commands == true && github.event.inputs.extra_commands != '' }}
+        if: ${{ github.event.inputs.execute_extra_commands == 'true' }}
         run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          docker exec -i \$CONTAINER_NAME php ${{ github.event.inputs.extra_commands }}
+          docker exec -i pcpdevccjkcom_app_1 php ${{ github.event.inputs.extra_commands }}
           EOF
