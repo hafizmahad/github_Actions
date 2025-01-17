@@ -24,7 +24,7 @@ on:
         default: ""
         type: string
       change_app_env:
-        description: "Should we change the APP_ENV in .env.local?"
+        description: "Change the APP_ENV"
         required: false
         default: false
         type: boolean
@@ -87,17 +87,6 @@ jobs:
           docker-compose -f $APP_ROOT/docker-compose-dev.yml up -d --build
           EOF
 
-          # Step 3: Create directory inside the container and set permissions
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -T -J $SERVER_USER@${{ secrets.PUBLIC_SERVER_IP_DEV }} $SERVER_USER@${{ secrets.PRIVATE_SERVER_IP_DEV }} <<EOF
-          # Define the container name
-          CONTAINER_NAME=pcpdevccjkcom_app_1
-          
-          # Create the temp_data directory inside the container
-          docker exec -i \$CONTAINER_NAME mkdir -p /var/temp_data
-          
-          # Set permissions for the temp_data directory
-          docker exec -i \$CONTAINER_NAME chmod 777 /var/temp_data
-          EOF
 
       # Step 5: Change APP_ENV in .env.local (only if the input is true)
       - name: Validate APP_ENV Change Input
