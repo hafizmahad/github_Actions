@@ -1,5 +1,4 @@
-name: dev_pcp_pipline_like_crmdev
-
+name: working_pcp_pipeline
 on:
   workflow_dispatch:
     inputs:
